@@ -50,10 +50,10 @@ def logging_messages_post():
     return jsonify(uuid=uuid)
 
 
-def close_running_threads():
+def on_exit():
     HAZLECAST_CLIENT.shutdown()
 
-atexit.register(close_running_threads)
+atexit.register(on_exit)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
