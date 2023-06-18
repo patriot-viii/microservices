@@ -36,3 +36,30 @@ hz start
 hz-mc -V
 hz-mc start
 ```
+## Task 3
+### Run hazelcast
+```
+hz start
+hz start
+hz start
+hz-mc start
+```
+### Run services
+```
+python3 -m flask --app facade-svc.py run --port=1337
+python3 -m flask --app messages-svc.py run --port=10010
+python3 -m flask --app logging-svc.py run --port=9090
+python3 -m flask --app logging-svc.py run --port=9091
+python3 -m flask --app logging-svc.py run --port=9092
+```
+### Send POST requests
+```
+for i in `seq 1 10`; \
+do curl -H 'Content-Type: application/json' -d '{"msg":"msg-'$i'"}' \
+http://0.0.0.0:1337/api/messages; \
+done
+```
+### Send GET request
+```
+curl http://0.0.0.0:1337/api/messages
+```
