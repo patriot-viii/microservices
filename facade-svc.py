@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-from flask import Flask, request, jsonify, make_response
-import uuid, requests, random, json, atexit
+from flask import Flask, request, jsonify
+import uuid, requests, json, atexit
 from ast import literal_eval
 import hazelcast
+from consul_facade import consul_get_value, consul_service_register, consul_service_deregister, consul_get_service
+from service_utils import get_host_port
 
-LOGGING_URL = 'http://localhost'
-MESSAGES_URL = 'http://localhost'
+LOGGING_SVC = 'logging-svc'
+MESSAGES_SVC = 'messages-svc'
 
 HAZLECAST_CLIENT = hazelcast.HazelcastClient()
-HAZLECAST_QUEUE = HAZLECAST_CLIENT.get_queue("messages-queue") 
+HAZLECAST_QUEUE = HAZLECAST_CLIENT.get_queue(consul_get_value("QUEUE_MESSAGES")) 
 
 app = Flask(__name__)
 
@@ -64,28 +66,24 @@ def create_response(logging, messages):
     return jsonify(resp)
 
 def get_logging_url():
-    return get_url(LOGGING_URL, ['9090', '9091', '9092'])
+    url = consul_get_service(LOGGING_SVC)
+    print('Selected', url)
+    return url
 
 def get_messages_url():
-    return get_url(MESSAGES_URL, ['10010', '10011'])
-
-def get_url(base_url, available_ports):
-    url = ''
-    while True:
-        try:
-            url = base_url + ':' + random.choice(available_ports)
-            r = requests.options(url)
-            print(url, '- selected')
-            break
-        except Exception as ex:
-            print(url, '- failed to establish a new connection')
-
+    url = consul_get_service(MESSAGES_SVC)
+    print('Selected', url)
     return url
 
 def on_exit():
+    print('on exit')
+    consul_service_deregister(app.name, port)
     HAZLECAST_CLIENT.shutdown()
 
-atexit.register(on_exit)
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    atexit.register(on_exit)
+
+    host, port = get_host_port()
+    consul_service_register(app.name, host, port)
+
+    app.run(host=host, port=port)
